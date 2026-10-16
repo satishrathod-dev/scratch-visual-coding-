@@ -1,19 +1,75 @@
-import React from "react";
+import React, { useRef, useEffect } from "react";
+import { AppProvider, useApp } from "./context/AppContext";
+import { usePlayback } from "./hooks/usePlayback";
+import Toolbar from "./components/Toolbar";
 import Sidebar from "./components/Sidebar";
 import MidArea from "./components/MidArea";
 import PreviewArea from "./components/PreviewArea";
 
-export default function App() {
+// Inner component (needs access to context)
+function ScratchEditor() {
+  const { state, dispatch } = useApp();
+
+  // Keep a ref to the latest state so the playback hook never reads stale state
+  const stateRef = useRef(state);
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
+
+  const { play, stop, reset } = usePlayback(stateRef, dispatch);
+
   return (
-    <div className="bg-blue-100 pt-6 font-sans">
-      <div className="h-screen overflow-hidden flex flex-row  ">
-        <div className="flex-1 h-screen overflow-hidden flex flex-row bg-white border-t border-r border-gray-200 rounded-tr-xl mr-2">
-          <Sidebar /> <MidArea />
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100vh",
+        overflow: "hidden",
+        fontFamily: "'Segoe UI', system-ui, -apple-system, sans-serif",
+        background: "#EFF6FF",
+      }}
+    >
+      {/* Top toolbar */}
+      <Toolbar onPlay={play} onStop={stop} onReset={reset} />
+
+      {/* Main editor area */}
+      <div style={{ display: "flex", flex: 1, overflow: "hidden", gap: 0 }}>
+        {/* Left: Block palette */}
+        <Sidebar />
+
+        {/* Center: Workspace */}
+        <div
+          style={{
+            flex: 1,
+            display: "flex",
+            minWidth: 0,
+            borderRight: "1px solid #E2E8F0",
+          }}
+        >
+          <MidArea />
         </div>
-        <div className="w-1/3 h-screen overflow-hidden flex flex-row bg-white border-t border-l border-gray-200 rounded-tl-xl ml-2">
+
+        {/* Right: Stage + sprite manager */}
+        <div
+          style={{
+            width: 520,
+            flexShrink: 0,
+            display: "flex",
+            flexDirection: "column",
+            background: "#F8FAFF",
+          }}
+        >
           <PreviewArea />
         </div>
       </div>
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <AppProvider>
+      <ScratchEditor />
+    </AppProvider>
   );
 }
