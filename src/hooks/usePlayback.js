@@ -41,9 +41,10 @@ export function usePlayback(stateRef, dispatch) {
   // ── Start one sprite's interpreter ───────────────────────────────────────────
   const startSpriteInterpreter = useCallback(
     (spriteId) => {
-      // Cancel any running interpreter for this sprite
+      // Cancel any running interpreter for this sprite (forced, not natural completion)
       if (cancelFnsRef.current[spriteId]) {
         cancelFnsRef.current[spriteId]();
+        delete cancelFnsRef.current[spriteId];
       }
 
       const program = runtimeRef.current.programs[spriteId];
@@ -58,10 +59,23 @@ export function usePlayback(stateRef, dispatch) {
         scheduleSync();
       };
 
-      const cancel = runProgram({ blocks: program, getSpriteState, updateSprite });
+      const onComplete = () => {
+        delete cancelFnsRef.current[spriteId];
+        // Auto-stop when all sprite programs have finished naturally
+        if (Object.keys(cancelFnsRef.current).length === 0 && runtimeRef.current.isPlaying) {
+          runtimeRef.current.isPlaying = false;
+          if (collisionRafRef.current) {
+            cancelAnimationFrame(collisionRafRef.current);
+            collisionRafRef.current = null;
+          }
+          dispatch({ type: "SET_PLAYING", value: false });
+        }
+      };
+
+      const cancel = runProgram({ blocks: program, getSpriteState, updateSprite, onComplete });
       cancelFnsRef.current[spriteId] = cancel;
     },
-    [scheduleSync]
+    [scheduleSync, dispatch]
   );
 
   // ── Handle collision: swap runtime programs and restart both interpreters ─────

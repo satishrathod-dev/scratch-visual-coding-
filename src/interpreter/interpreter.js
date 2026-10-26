@@ -40,7 +40,7 @@ function sleep(ms) {
  *   Writes to the mutable runtime ref AND schedules React sync.
  * @returns {Function} cancel – call to abort execution
  */
-export function runProgram({ blocks, getSpriteState, updateSprite }) {
+export function runProgram({ blocks, getSpriteState, updateSprite, onComplete }) {
   let cancelled = false;
   const cancel = () => {
     cancelled = true;
@@ -113,10 +113,10 @@ export function runProgram({ blocks, getSpriteState, updateSprite }) {
     }
   }
 
-  // Kick off async execution (errors are swallowed when cancelled)
-  execute(blocks).catch((err) => {
-    if (!cancelled) console.error("Interpreter error:", err);
-  });
+  // Kick off async execution; call onComplete when program finishes naturally
+  execute(blocks)
+    .then(() => { if (!cancelled && onComplete) onComplete(); })
+    .catch((err) => { if (!cancelled) console.error("Interpreter error:", err); });
 
   return cancel;
 }
